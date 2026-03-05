@@ -12,7 +12,6 @@ def cleanhtml(raw_html):
 
 
 
-API_KEY = "sk_V2_hgu_kq9NuxhwXSV_TcvMn2HnJeyoDDc78gSp3Ci1rjPKTNtk"
 TEMPLATE_ID = "581f6d97e1224c38bf3bad1567e13c2f"
 
 template_url = f"https://api.heygen.com/v2/template/{TEMPLATE_ID}/generate"
@@ -167,4 +166,5 @@ else:
     print(f"Błąd: {wynik.text}")
 time.sleep(5)
 print("okejokej");
+
 
