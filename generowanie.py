@@ -24,7 +24,7 @@ zadania = [
 ]
 
 # # przekopiowałem tu endpoint -----------------
-
+#
 dane = {
   "object": "events",
   "type": "list",
