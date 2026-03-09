@@ -13,9 +13,7 @@ def cleanhtml(raw_html):
 
 
 TEMPLATE_ID = "581f6d97e1224c38bf3bad1567e13c2f"
-
 template_url = f"https://api.heygen.com/v2/template/{TEMPLATE_ID}/generate"
-
 zadania = [
     {
         "tekst": "Tresc filmu 1",
@@ -24,7 +22,6 @@ zadania = [
 ]
 
 # # przekopiowałem tu endpoint -----------------
-
 dane = {
   "object": "events",
   "type": "list",
