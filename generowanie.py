@@ -1,9 +1,14 @@
-# aaaaaaaaa
-
 import requests
 import json
 import time
 import re
+import os
+
+from dotenv import load_dotenv
+
+load_dotenv()
+
+API_KEY = os.getenv("API_KEY")
 
 # # regex
 CLEANR = re.compile('<.*?>|&([a-z0-9]+|#[0-9]{1,6}|#x[0-9a-f]{1,6});')
@@ -11,7 +16,6 @@ CLEANR = re.compile('<.*?>|&([a-z0-9]+|#[0-9]{1,6}|#x[0-9a-f]{1,6});')
 def cleanhtml(raw_html):
   cleantext = re.sub(CLEANR, '', raw_html)
   return cleantext
-
 
 
 TEMPLATE_ID = "581f6d97e1224c38bf3bad1567e13c2f"
@@ -104,7 +108,7 @@ dane_do_filmu = {
 
 def generuj_wideo(url_obrazka, tytul, tresc, podtytul):
     payload = {
-        "test": True,
+        "test": False, #zmiana z true na false
         "caption": False,
         "title": "TEST",
         "variables": {
