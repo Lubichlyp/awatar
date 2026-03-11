@@ -3,6 +3,7 @@ import json
 import time
 import re
 import os
+import argparse
 
 def cleanhtml(raw_html):
   cleantext = re.sub(CLEANR, '', raw_html)
@@ -71,7 +72,12 @@ load_dotenv()
 
 API_KEY = os.getenv("API_KEY")
 
-_id = 3520672
+parser = argparse.ArgumentParser()
+parser.add_argument("--id")
+args = parser.parse_args()
+print("Podane ID:", args.id)
+
+_id = int(args.id)
 endpoint = f"https://londynek.net/api/get-data?hash=F8047E46311596755B6AE4B09C54D346B2DD712F&limit=1&sql_where=and%20ja.jdnews_id%3D{_id}&select_fields=news_content,movie_p,movie,headline,headline_en,title,title_en"
 
 TEMPLATE_ID = "581f6d97e1224c38bf3bad1567e13c2f"
