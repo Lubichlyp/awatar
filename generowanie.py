@@ -5,6 +5,10 @@ import re
 import os
 import argparse
 
+from dotenv import load_dotenv
+load_dotenv()
+API_KEY = os.getenv("API_KEY")
+
 def cleanhtml(raw_html):
   cleantext = re.sub(CLEANR, '', raw_html)
   return cleantext
@@ -142,13 +146,6 @@ def run(_id):
 
 CLEANR = re.compile('<.*?>|&([a-z0-9]+|#[0-9]{1,6}|#x[0-9a-f]{1,6});')
 
-# from dotenv import load_dotenv
-
-# load_dotenv()
-
-# API_KEY = os.getenv("API_KEY")
-
-API_KEY="sk_V2_hgu_kU5JDbSMR60_Bs8HKzcAThK2C2gXZCqdVtOMznxnVwRQ"
 
 parser = argparse.ArgumentParser(
     description="Generator wideo na podstawie ID artykułu."
@@ -160,11 +157,6 @@ parser.add_argument(
     required=True,
     help="ID artykułu (np. 12345)"
 )
-
-args = parser.parse_args()
-
-_id = args.id
-print("Podane ID:", _id)
 
 TEMPLATE_ID = "581f6d97e1224c38bf3bad1567e13c2f"
 
