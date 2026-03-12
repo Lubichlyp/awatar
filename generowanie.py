@@ -142,13 +142,12 @@ def run(_id):
 
 CLEANR = re.compile('<.*?>|&([a-z0-9]+|#[0-9]{1,6}|#x[0-9a-f]{1,6});')
 
-# from dotenv import load_dotenv
+from dotenv import load_dotenv
 
-# load_dotenv()
+load_dotenv()
 
-# API_KEY = os.getenv("API_KEY")
+API_KEY = os.getenv("API_KEY")
 
-API_KEY="sk_V2_hgu_kU5JDbSMR60_Bs8HKzcAThK2C2gXZCqdVtOMznxnVwRQ"
 
 parser = argparse.ArgumentParser(
     description="Generator wideo na podstawie ID artykułu."
