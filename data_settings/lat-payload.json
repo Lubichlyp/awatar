@@ -7,7 +7,7 @@
       "name": "image_",
       "type": "image",
       "properties": {
-        "url": "https://landowska-design.pl/uploads/galeria/2021/2021_imad/1500/iMad02.jpg.webp",
+        "url": "https://assets.aws.londynek.net/images/jdnews/2523317/370275-202311091558-lg.jpg.webp?t=1699545571.000000",
         "fit": "cover"
       }
     },
@@ -23,29 +23,29 @@
       "name": "title_",
       "type": "text",
       "properties": {
-        "content": "landowska-design.pl"
+        "content": "Centra bankowe w pigułce. Czym są i gdzie je znaleźć? Transport | londynek.net"
       }
     },
     "script1": {
       "name": "script1",
       "type": "text",
       "properties": {
-        "content": "Projektowanie pomieszczeń Salon Łazienka Kuchnia"
+        "content": "Londynek Lajt  Celebryci Moda Zdrowa dieta Więcej..."
       }
     },
     "subtitle_": {
       "name": "subtitle_",
       "type": "text",
       "properties": {
-        "content": "landowska-design.pl"
+        "content": "Centra bankowe w pigułce. Czym są i gdzie je znaleźć? Transport | londynek.net"
       }
     }
   },
-  "script_input": "Projektowanie pomieszczeń Salon Łazienka Kuchnia",
+  "script_input": "Londynek Lajt  Celebryci Moda Zdrowa dieta Więcej...",
   "selected_images": [
-    "https://landowska-design.pl/uploads/landowska-design-logo-w700.png",
-    "https://landowska-design.pl/uploads/galeria/2021/2021_imad/1500/iMad02.jpg.webp",
-    "https://landowska-design.pl/uploads/galeria/2021/2021_imad/1500/iMad03.jpg.webp"
+    "https://assets.aws.londynek.net/images/jdnews/2523317/370275-202311091558-lg.jpg.webp?t=1699545571.000000",
+    "https://assets.aws.londynek.net/images/jdnews/2523317/370276-202311091600-m.jpg.webp?t=1699545646?t=1699545650666",
+    "https://assets.aws.londynek.net/images/jdnews-agency/2191248/448674-202603120921-lg.jpg.webp?t=15"
   ],
   "template_id_selected": "581f6d97e1224c38bf3bad1567e13c2f",
   "webhook_enabled": false
