@@ -1,0 +1,52 @@
+{
+  "test": true,
+  "caption": false,
+  "title": "TEST",
+  "variables": {
+    "image_": {
+      "name": "image_",
+      "type": "image",
+      "properties": {
+        "url": "https://landowska-design.pl/uploads/galeria/2021/2021_imad/1500/iMad02.jpg.webp",
+        "fit": "cover"
+      }
+    },
+    "background_": {
+      "name": "background_",
+      "type": "character",
+      "properties": {
+        "character_id": "Annie_Casual_Standing_Front_2_public",
+        "type": "avatar"
+      }
+    },
+    "title_": {
+      "name": "title_",
+      "type": "text",
+      "properties": {
+        "content": "landowska-design.pl"
+      }
+    },
+    "script1": {
+      "name": "script1",
+      "type": "text",
+      "properties": {
+        "content": "Projektowanie pomieszczeń Salon Łazienka Kuchnia"
+      }
+    },
+    "subtitle_": {
+      "name": "subtitle_",
+      "type": "text",
+      "properties": {
+        "content": "landowska-design.pl"
+      }
+    }
+  },
+  "script_input": "Projektowanie pomieszczeń Salon Łazienka Kuchnia",
+  "selected_images": [
+    "https://landowska-design.pl/uploads/landowska-design-logo-w700.png",
+    "https://landowska-design.pl/uploads/galeria/2021/2021_imad/1500/iMad02.jpg.webp",
+    "https://landowska-design.pl/uploads/galeria/2021/2021_imad/1500/iMad03.jpg.webp"
+  ],
+  "template_id_selected": "581f6d97e1224c38bf3bad1567e13c2f",
+  "webhook_enabled": false
+}
