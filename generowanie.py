@@ -92,23 +92,24 @@ def run(_id):
         for image in event['images']:
             # image['url'] = "images/jdevents/"
             image_url = image['url'].replace('/image/', '/images/')
-            temp = "https://assets.aws.londynek.net/" + image_url + image['file_name']
+            temp = "https://assets.aws.londynek.net" + image_url + "/" + image['file_name']
             image['file_name'] = temp
             # print(image['file_name']) 
 
         obraz_url = dane['data'][0]['images'][1]['file_name']
-
+    print(obraz_url);
 
     if not sprawdz_obraz(obraz_url):
         print("Obraz nie działa, używam placeholdera")
         obraz_url = "https://assets.aws.londynek.net/images/jdevents/443651-202601200908-lg.jpg"
 
     # print(dane['data'][0]['images'][1]['url']) 
+    
 
     dane_do_filmu = {
         "obraz": obraz_url or ":)",
         "tytul": dane['data'][0]['title'] or ":)",
-        "skrypt": dane['data'][0]['headline'] + ". " + cleanhtml(dane['data'][0]['news_content'])[:1850] or ":)",
+        "skrypt": dane['data'][0]['headline'] + ". " + cleanhtml(dane['data'][0]['news_content'])[:30] or ":)",
         "podtytul": dane['data'][0]['title_en'] or ":)"
     }
     for klucz, wartosc in dane_do_filmu.items():
@@ -127,18 +128,18 @@ def run(_id):
 # Generowanie
 
 
-    wynik = generuj_wideo(dane_do_filmu['obraz'], dane_do_filmu["tytul"], dane_do_filmu["skrypt"], dane_do_filmu["podtytul"])
+    # wynik = generuj_wideo(dane_do_filmu['obraz'], dane_do_filmu["tytul"], dane_do_filmu["skrypt"], dane_do_filmu["podtytul"])
 
-    print(wynik)
-    if wynik.status_code == 200:
-        id_filmu = wynik.json()["data"]["video_id"]
-        print(f"Sukces! ID: {id_filmu}")
-    else:
-        print(f"Błąd: {wynik.text}")
-    time.sleep(5)
-    print("okejokej");
+    # print(wynik)
+    # if wynik.status_code == 200:
+    #     id_filmu = wynik.json()["data"]["video_id"]
+    #     print(f"Sukces! ID: {id_filmu}")
+    # else:
+    #     print(f"Błąd: {wynik.text}")
+    # time.sleep(5)
+    # print("okejokej");
 
-    return wynik.json()
+    # return wynik.json()
 
 CLEANR = re.compile('<.*?>|&([a-z0-9]+|#[0-9]{1,6}|#x[0-9a-f]{1,6});')
 
@@ -147,6 +148,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 API_KEY = os.getenv("API_KEY")
+
+CLEANR = re.compile('<.*?>|&([a-z0-9]+|#[0-9]{1,6}|#x[0-9a-f]{1,6});')
 
 
 parser = argparse.ArgumentParser(
@@ -159,11 +162,6 @@ parser.add_argument(
     required=True,
     help="ID artykułu (np. 12345)"
 )
-
-args = parser.parse_args()
-
-_id = args.id
-print("Podane ID:", _id)
 
 TEMPLATE_ID = "581f6d97e1224c38bf3bad1567e13c2f"
 
