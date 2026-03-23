@@ -13,7 +13,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 API_KEY = os.getenv("API_KEY")
-TEMPLATE_ID = os.getenv("TEMPLATE_ID", "1da1b6228e594bb5a8dc3a9cf823b04e")
+TEMPLATE_ID = os.getenv("TEMPLATE_ID", "c4504470f364407b847459b12b291436")
 AVATAR_ID = os.getenv("AVATAR_ID", "Annie_Casual_Standing_Front_2_public")
 VOICE_ID = os.getenv("VOICE_ID")
 HEYGEN_WEBHOOK_URL = os.getenv("HEYGEN_WEBHOOK_URL", "").strip()
@@ -137,22 +137,6 @@ def build_payload_dynamic(
         "variables": variables,
     }
 
-
-def split_into_2_parts(text: str) -> list[str]:
-    if not text:
-        return ["", ""]
-
-    parts = re.split(r'(?<=[.!?]) +', text)
-    parts = [p.strip() for p in parts if p.strip()]
-
-    if len(parts) >= 2:
-        mid = len(parts) // 2
-        return [
-            " ".join(parts[:mid]),
-            " ".join(parts[mid:])
-        ]
-
-    return [parts[0], parts[0]]
 
 
 def get_scene_count(variable_map: dict[str, list[str]]) -> int:
@@ -386,14 +370,6 @@ def generuj_wideo(image_urls: str, tytul: str, tresc: str, podtytul: str) -> req
     #     "https://assets.aws.londynek.net/images/jdnews/2523317/370275-202311091558-lg.jpg.webp?t=1699545571.000000",
     #     "https://upload.wikimedia.org/wikipedia/commons/thumb/7/71/Black.png/250px-Black.png",
     # ],
-# )
-    # scripts = split_into_2_parts(dane_do_filmu["skrypt"])
-
-    # payload = build_payload_2scripts(
-    #     scripts=scripts,
-    #     images = [dane_do_filmu["obraz"]] * 3,
-    #     avatar_id=AVATAR_ID,
-    # )
 
     payload = build_payload_dynamic(
         full_script=tresc,
@@ -982,7 +958,7 @@ def build_payload_from_selection(
     video_title = (title or "").strip() or f"Wideo z {source_url}"
     video_subtitle = (subtitle or "").strip() or video_title
 
-    scripts = split_into_2_parts(script)
+    scripts = split_into_n_parts(script)
 
     variables = {}
 

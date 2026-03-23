@@ -1,48 +1,41 @@
 {
   "test": true,
   "caption": false,
-  "title": "National Living Wage - minimalna płaca",
+  "title": "Utrata polskich dokumentów w UK",
   "variables": {
     "script1": {
       "name": "script1",
       "type": "text",
       "properties": {
-        "content": "National Living Wage to minimalna stawka, która w zamyśle ma pozwolić osobie pracującej w Wielkiej Brytanii na godne życie."
+        "content": "W przypadku kradzieży dokumentów, kiedy znajdujesz się poza granicami Polski - możesz liczyć na pomoc. Choć sytuacja może wydawać się beznadziejna, jest z niej wyjście.."
       }
     },
     "script2": {
       "name": "script2",
       "type": "text",
       "properties": {
-        "content": "."
-      }
-    },
-    "script3": {
-      "name": "script3",
-      "type": "text",
-      "properties": {
-        "content": "Czym jest National Living Wage?\r\rNational Living Wage (NLW) to po prostu określane"
+        "content": "Utratę paszportu należy zgłosić na najbl"
       }
     },
     "title_": {
       "name": "title_",
       "type": "text",
       "properties": {
-        "content": "National Living Wage - minimalna płaca"
+        "content": "Utrata polskich dokumentów w UK"
       }
     },
     "subtitle_": {
       "name": "subtitle_",
       "type": "text",
       "properties": {
-        "content": "National Living Wage - minimalna płaca"
+        "content": "Utrata polskich dokumentów w UK"
       }
     },
     "image_": {
       "name": "image_",
       "type": "image",
       "properties": {
-        "url": "https://assets.aws.londynek.net/images/jdnews/2523317/443915-202601220937-lg.jpg",
+        "url": "https://assets.aws.londynek.net/images/jdnews/2523317/102122-201809121556-lg.jpg",
         "fit": "cover"
       }
     },
@@ -50,7 +43,7 @@
       "name": "image_2",
       "type": "image",
       "properties": {
-        "url": "https://assets.aws.londynek.net/images/jdnews/2523317/81838-201801120455-lg.jpg",
+        "url": "https://assets.aws.londynek.net/images/jdnews/2523317/269114-202107091043-lg.jpg",
         "fit": "cover"
       }
     },
@@ -58,7 +51,7 @@
       "name": "image_3",
       "type": "image",
       "properties": {
-        "url": "https://assets.aws.londynek.net/images/jdnews/2523317/295998-202201171630-lg.jpg",
+        "url": "https://assets.aws.londynek.net/images/jdnews/2523317/102122-201809121556-lg.jpg",
         "fit": "cover"
       }
     },
