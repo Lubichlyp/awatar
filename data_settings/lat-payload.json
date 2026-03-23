@@ -1,13 +1,64 @@
 {
   "test": true,
   "caption": false,
-  "title": "TEST",
+  "title": "National Living Wage - minimalna płaca",
   "variables": {
+    "script1": {
+      "name": "script1",
+      "type": "text",
+      "properties": {
+        "content": "National Living Wage to minimalna stawka, która w zamyśle ma pozwolić osobie pracującej w Wielkiej Brytanii na godne życie."
+      }
+    },
+    "script2": {
+      "name": "script2",
+      "type": "text",
+      "properties": {
+        "content": "."
+      }
+    },
+    "script3": {
+      "name": "script3",
+      "type": "text",
+      "properties": {
+        "content": "Czym jest National Living Wage?\r\rNational Living Wage (NLW) to po prostu określane"
+      }
+    },
+    "title_": {
+      "name": "title_",
+      "type": "text",
+      "properties": {
+        "content": "National Living Wage - minimalna płaca"
+      }
+    },
+    "subtitle_": {
+      "name": "subtitle_",
+      "type": "text",
+      "properties": {
+        "content": "National Living Wage - minimalna płaca"
+      }
+    },
     "image_": {
       "name": "image_",
       "type": "image",
       "properties": {
-        "url": "https://assets.aws.londynek.net/images/jdnews/2523317/370275-202311091558-lg.jpg.webp?t=1699545571.000000",
+        "url": "https://assets.aws.londynek.net/images/jdnews/2523317/443915-202601220937-lg.jpg",
+        "fit": "cover"
+      }
+    },
+    "image_2": {
+      "name": "image_2",
+      "type": "image",
+      "properties": {
+        "url": "https://assets.aws.londynek.net/images/jdnews/2523317/81838-201801120455-lg.jpg",
+        "fit": "cover"
+      }
+    },
+    "image_3": {
+      "name": "image_3",
+      "type": "image",
+      "properties": {
+        "url": "https://assets.aws.londynek.net/images/jdnews/2523317/295998-202201171630-lg.jpg",
         "fit": "cover"
       }
     },
@@ -18,35 +69,6 @@
         "character_id": "Annie_Casual_Standing_Front_2_public",
         "type": "avatar"
       }
-    },
-    "title_": {
-      "name": "title_",
-      "type": "text",
-      "properties": {
-        "content": "Centra bankowe w pigułce. Czym są i gdzie je znaleźć? Transport | londynek.net"
-      }
-    },
-    "script1": {
-      "name": "script1",
-      "type": "text",
-      "properties": {
-        "content": "Londynek Lajt  Celebryci Moda Zdrowa dieta Więcej..."
-      }
-    },
-    "subtitle_": {
-      "name": "subtitle_",
-      "type": "text",
-      "properties": {
-        "content": "Centra bankowe w pigułce. Czym są i gdzie je znaleźć? Transport | londynek.net"
-      }
     }
-  },
-  "script_input": "Londynek Lajt  Celebryci Moda Zdrowa dieta Więcej...",
-  "selected_images": [
-    "https://assets.aws.londynek.net/images/jdnews/2523317/370275-202311091558-lg.jpg.webp?t=1699545571.000000",
-    "https://assets.aws.londynek.net/images/jdnews/2523317/370276-202311091600-m.jpg.webp?t=1699545646?t=1699545650666",
-    "https://assets.aws.londynek.net/images/jdnews-agency/2191248/448674-202603120921-lg.jpg.webp?t=15"
-  ],
-  "template_id_selected": "581f6d97e1224c38bf3bad1567e13c2f",
-  "webhook_enabled": false
+  }
 }
