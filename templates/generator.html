@@ -1,0 +1,425 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Awatar Generator</title>
+  <style>
+    :root {
+      --bg: #f6f2ea;
+      --ink: #1d1a17;
+      --muted: #5c5650;
+      --card: #fffaf0;
+      --line: #d8c6ae;
+      --accent: #b6502a;
+      --accent-2: #1f6e6e;
+      --radius: 14px;
+      --shadow: 0 18px 45px rgba(29, 26, 23, 0.08);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "Segoe UI", "Trebuchet MS", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 10% 10%, rgba(182, 80, 42, 0.18), transparent 40%),
+        radial-gradient(circle at 90% 0%, rgba(31, 110, 110, 0.15), transparent 40%),
+        var(--bg);
+      min-height: 100vh;
+    }
+
+    .wrap {
+      max-width: 1060px;
+      margin: 0 auto;
+      padding: 26px 16px 52px;
+    }
+
+    .hero {
+      border: 1px solid var(--line);
+      background: linear-gradient(130deg, #fffaf0, #f9efe0);
+      border-radius: var(--radius);
+      padding: 20px;
+      box-shadow: var(--shadow);
+      margin-bottom: 16px;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 1.6rem;
+      letter-spacing: 0.01em;
+    }
+
+    p { margin: 0; color: var(--muted); }
+
+    .card {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--card);
+      box-shadow: var(--shadow);
+      padding: 16px;
+      margin-top: 16px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 16px;
+    }
+
+    .input, .textarea {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 10px 12px;
+      font: inherit;
+      background: #fff;
+      color: var(--ink);
+    }
+
+    .textarea { min-height: 92px; resize: vertical; }
+
+    .row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      border: 0;
+      border-radius: 10px;
+      padding: 10px 14px;
+      color: #fff;
+      background: var(--accent);
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .btn.alt { background: var(--accent-2); }
+
+    .error {
+      margin-top: 12px;
+      border: 1px solid #cf5a3a;
+      background: #ffe7e0;
+      border-radius: 10px;
+      padding: 10px;
+      color: #7f2c16;
+    }
+
+    .result {
+      margin-top: 12px;
+      border: 1px solid #3f8f8f;
+      background: #e4f4f4;
+      border-radius: 10px;
+      padding: 10px;
+      color: #184f4f;
+      overflow-x: auto;
+      white-space: pre-wrap;
+    }
+
+    textarea.result {
+      width: 100%;
+      min-height: 320px;
+      resize: vertical;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      white-space: pre;
+    }
+
+    .list {
+      display: grid;
+      gap: 8px;
+      max-height: 420px;
+      overflow: auto;
+      padding-right: 4px;
+    }
+
+    .item {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #fff;
+      padding: 10px;
+      display: flex;
+      gap: 8px;
+      align-items: flex-start;
+    }
+
+    .item p {
+      margin: 0;
+      font-size: 0.95rem;
+      color: #332f2c;
+      line-height: 1.35;
+    }
+
+    .images {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 10px;
+      max-height: 420px;
+      overflow: auto;
+      padding-right: 4px;
+    }
+
+    .img-card {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #fff;
+      overflow: hidden;
+      display: grid;
+      grid-template-rows: 120px auto;
+    }
+
+    .img-card img {
+      width: 100%;
+      height: 120px;
+      object-fit: cover;
+      background: #efe5d8;
+    }
+
+    .img-meta {
+      padding: 8px;
+      font-size: 0.8rem;
+      color: #4f4a45;
+      word-break: break-word;
+    }
+
+    .avatar-preview {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 6px 0 12px;
+      padding: 8px;
+      border: 1px dashed var(--line);
+      border-radius: 10px;
+      background: #fff;
+    }
+
+    .avatar-preview img {
+      width: 80%;
+      object-fit: cover;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: #efe5d8;
+      display: none;
+    }
+
+    .avatar-preview small {
+      color: #4f4a45;
+    }
+
+    @media (max-width: 900px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="hero">
+      <h1>Generator wideo z URL</h1>
+      <p>Wklej adres strony, wybierz fragmenty treści i obraz, a system wygeneruje payload do HeyGen.</p>
+    </section>
+
+    <section class="card">
+      <form method="post" action="/scan" class="row">
+        <input class="input" type="url" name="url" placeholder="https://example.com/artykul" required style="flex: 1; min-width: 240px;" />
+        <button class="btn" type="submit">Skanuj stronę</button>
+      </form>
+
+      {% if error %}
+      <div class="error">{{ error }}</div>
+      {% endif %}
+
+      {% if result %}
+      <div class="result">{{ result }}</div>
+      {% endif %}
+    </section>
+
+    {% if scan %}
+    <form class="card" method="post" action="/preview-web">
+      <input type="hidden" name="source_url" value="{{ scan.source_url }}" />
+
+      <div class="row" style="margin-bottom: 10px;">
+        <input class="input" type="text" name="title" value="{{ form_data.title if form_data else scan.title }}" placeholder="Tytuł wideo" />
+        <input class="input" type="text" name="subtitle" value="{{ form_data.subtitle if form_data else scan.title }}" placeholder="Podtytuł" />
+      </div>
+
+      <div class="row" style="margin-bottom: 10px;">
+        <label for="selected_avatar_id" style="min-width: 110px; color: #4f4a45;">Awatar:</label>
+        <select id="selected_avatar_id" name="selected_avatar_id" class="input" style="max-width: 520px;">
+          {% set current_avatar = form_data.selected_avatar_id if form_data else selected_avatar_id %}
+          {% for avatar in avatars %}
+          <option value="{{ avatar.id }}" data-thumbnail="{{ avatar.thumbnail }}" {% if avatar.id == current_avatar %}selected{% endif %}>
+            {{ avatar.name }} ({{ avatar.id }})
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="row" style="margin-bottom: 10px;">
+        <label for="selected_template_id" style="min-width: 110px; color: #4f4a45;">Szablon:</label>
+        <select id="selected_template_id" name="selected_template_id" class="input" style="max-width: 520px;">
+          {% set current_template = form_data.selected_template_id if form_data else selected_template_id %}
+          {% for tpl in templates_list %}
+          <option value="{{ tpl.id }}" {% if tpl.id == current_template %}selected{% endif %}>
+            {{ tpl.name }} ({{ tpl.id }})
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="avatar-preview">
+        <img id="avatarPreviewImage" alt="Podgląd awatara" />
+        <small id="avatarPreviewText">Brak miniatury dla wybranego awatara.</small>
+      </div>
+
+      <div class="row" style="margin-bottom: 14px;">
+        <label><input type="checkbox" name="dry_run" checked /> dry-run (walidacja ID)</label>
+        <label><input type="checkbox" name="short_test" checked /> short-test (krótki skrypt)</label>
+      </div>
+
+      <div class="grid">
+        <div>
+          <h3>Tekst (skompresowany podgląd)</h3>
+          <div class="list">
+            {% for text in scan.texts %}
+            <label class="item">
+              <input type="checkbox" name="selected_texts" value="{{ text.full }}"
+                {% if form_data and text.full in form_data.selected_texts %}checked{% endif %} />
+              <p>{{ text.preview }}</p>
+            </label>
+            {% endfor %}
+            {% if not scan.texts %}
+            <p>Brak wykrytych fragmentów tekstu.</p>
+            {% endif %}
+          </div>
+
+          <h3 style="margin-top: 12px;">Skrypt (edytowalny)</h3>
+          <p style="margin: 0 0 8px; color: #4f4a45; font-size: 0.9rem;">
+            Pole jest uzupełniane na podstawie zaznaczonych fragmentów. Możesz je dowolnie edytować i dopisać własną treść.
+          </p>
+          <textarea
+            id="script_text"
+            name="script_text"
+            class="textarea"
+            placeholder="Tutaj możesz dopisać własny tekst do lektora..."
+          >{{ form_data.script_text if form_data else "" }}</textarea>
+        </div>
+
+        <div>
+          <h3>Obrazy</h3>
+          <p style="margin: 0 0 8px; color: #4f4a45; font-size: 0.9rem;">Możesz zaznaczyć kilka. Logo trafia na górę listy, ale jako obraz główny payload preferuje zdjęcie nie-logo.</p>
+          <div class="images">
+            {% for image in scan.images %}
+            <label class="img-card">
+              <img src="{{ image.url }}" alt="{{ image.alt }}" loading="lazy" />
+              <div class="img-meta">
+                <div>
+                  <input type="checkbox" name="selected_images" value="{{ image.url }}"
+                    {% if form_data and image.url in form_data.selected_images %}checked{% elif not form_data and loop.index0 == 0 %}checked{% endif %} />
+                  wybierz
+                  {% if image.is_logo %}<strong>(logo)</strong>{% endif %}
+                </div>
+                <div>{{ image.preview }}</div>
+              </div>
+            </label>
+            {% endfor %}
+            {% if not scan.images %}
+            <p>Brak wykrytych obrazów. Zostanie użyty placeholder.</p>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <div class="row" style="margin-top: 14px;">
+        <button class="btn alt" type="submit">Podgląd payloadu</button>
+      </div>
+    </form>
+    {% endif %}
+
+    {% if payload_preview %}
+    <section class="card">
+      <h3>Podgląd payloadu HeyGen</h3>
+
+      <form method="post" action="/generate-web" class="row" style="margin-top: 12px;">
+        {% set current_template_for_send = form_data.selected_template_id if form_data else selected_template_id %}
+        <input type="hidden" name="source_url" value="{{ form_data.source_url if form_data else scan.source_url }}" />
+        <input type="hidden" name="selected_template_id" value="{{ current_template_for_send }}" />
+        <textarea class="result" name="payload_json">{{ payload_preview }}</textarea>
+        <label for="heygen_endpoint_url" style="width:100%; color:#4f4a45; margin-top:8px;">Endpoint URL</label>
+        <input
+          id="heygen_endpoint_url"
+          class="input"
+          type="text"
+          readonly
+          value="https://api.heygen.com/v2/template/{{ current_template_for_send }}/generate"
+          style="width:100%;"
+        />
+        <button class="btn" type="submit">Wyślij do HeyGen</button>
+      </form>
+    </section>
+    {% endif %}
+  </div>
+  <script>
+    (function () {
+      const select = document.getElementById("selected_avatar_id");
+      const img = document.getElementById("avatarPreviewImage");
+      const txt = document.getElementById("avatarPreviewText");
+      if (!select || !img || !txt) return;
+
+      function updateAvatarPreview() {
+        const option = select.options[select.selectedIndex];
+        const src = (option && option.dataset && option.dataset.thumbnail) ? option.dataset.thumbnail.trim() : "";
+        if (src) {
+          img.src = src;
+          img.style.display = "block";
+          txt.textContent = "Podgląd wybranego awatara.";
+        } else {
+          img.removeAttribute("src");
+          img.style.display = "none";
+          txt.textContent = "Brak miniatury dla wybranego awatara.";
+        }
+      }
+
+      select.addEventListener("change", updateAvatarPreview);
+      updateAvatarPreview();
+    })();
+
+    (function () {
+      const textarea = document.getElementById("script_text");
+      const checkboxes = Array.from(document.querySelectorAll('input[name="selected_texts"]'));
+      if (!textarea || checkboxes.length === 0) return;
+
+      let manualOverride = textarea.value.trim().length > 0;
+
+      function composeFromChecks() {
+        return checkboxes
+          .filter((cb) => cb.checked)
+          .map((cb) => cb.value.trim())
+          .filter(Boolean)
+          .join("\n\n");
+      }
+
+      function syncTextareaFromCheckboxes(force) {
+        if (!force && manualOverride) return;
+        textarea.value = composeFromChecks();
+      }
+
+      textarea.addEventListener("input", () => {
+        manualOverride = true;
+      });
+
+      checkboxes.forEach((cb) => {
+        cb.addEventListener("change", () => {
+          const hasManualContent = textarea.value.trim().length > 0;
+          if (!manualOverride || !hasManualContent) {
+            syncTextareaFromCheckboxes(true);
+          }
+        });
+      });
+
+      if (!manualOverride) {
+        syncTextareaFromCheckboxes(true);
+      }
+    })();
+  </script>
+</body>
+</html>
