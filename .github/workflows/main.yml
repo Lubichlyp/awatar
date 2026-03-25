@@ -1,4 +1,4 @@
-name: Generate HeyGen Video branch
+name: Generate HeyGen Video
 
 on:
   workflow_dispatch:

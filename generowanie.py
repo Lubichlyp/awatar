@@ -14,7 +14,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 API_KEY = os.getenv("API_KEY")
-TEMPLATE_ID = os.getenv("TEMPLATE_ID", "581f6d97e1224c38bf3bad1567e13c2f")
+TEMPLATE_ID = os.getenv("TEMPLATE_ID", "1da1b6228e594bb5a8dc3a9cf823b04e")
 AVATAR_ID = os.getenv("AVATAR_ID", "Annie_Casual_Standing_Front_2_public")
 AVATAR_FILTER_PREFIX = os.getenv("AVATAR_FILTER_PREFIX", "Annie").strip()
 VOICE_ID = os.getenv("VOICE_ID")
@@ -22,7 +22,7 @@ HEYGEN_WEBHOOK_URL = os.getenv("HEYGEN_WEBHOOK_URL", "").strip()
 HEYGEN_TEST_MODE = os.getenv("HEYGEN_TEST_MODE", "true").lower() == "true"
 HEYGEN_IMAGE_FIT = os.getenv("HEYGEN_IMAGE_FIT", "cover")
 SHORT_TEST_TEXT = "Test."
-PLACEHOLDER_IMAGE = "https://assets.aws.londynek.net/images/jdevents/443651-202601200908-lg.jpg"
+PLACEHOLDER_IMAGE = "https://assets.aws.londynek.net/images/jdnews/2523317/370275-202311091558-lg.jpg.webp?t=1699545571.000000"
 
 CLEANR = re.compile(r"<.*?>|&([a-z0-9]+|#[0-9]{1,6}|#x[0-9a-f]{1,6});")
 
@@ -44,7 +44,137 @@ DEFAULT_TEMPLATE_VARIABLE_MAP = {
 }
 
 
-# Zwraca endpoint generowania wideo dla wskazanego template'u.
+def split_into_n_parts(text: str, n: int) -> list[str]:
+    if not text:
+        return [""] * n
+
+    parts = re.split(r'(?<=[.!?]) +', text)
+    parts = [p.strip() for p in parts if p.strip()]
+
+    if len(parts) <= n:
+        # za mało zdań -> duplikuj
+        while len(parts) < n:
+            parts.append(parts[-1])
+        return parts[:n]
+
+    # równy podział
+    chunk_size = len(parts) // n
+    remainder = len(parts) % n
+
+    result = []
+    start = 0
+
+    for i in range(n):
+        extra = 1 if i < remainder else 0
+        end = start + chunk_size + extra
+        result.append(" ".join(parts[start:end]))
+        start = end
+
+    return result
+
+def build_payload_dynamic(
+    full_script: str,
+    images: list[str],
+    title: str,
+    subtitle: str,
+    template_id: str | None = None,
+    avatar_id: str | None = None,
+):
+    variable_map = get_template_variable_map(template_id)
+
+    # liczba scen z template
+    n = get_scene_count(variable_map)
+    scripts = split_into_n_parts(full_script, n)
+
+    variables = {}
+
+    script_vars = sorted(
+        [v for v in variable_map["text"] if v.lower().startswith("script")]
+    )
+    for i, var_name in enumerate(script_vars):
+        variables[var_name] = {
+            "name": var_name,
+            "type": "text",
+            "properties": {"content": scripts[i] if i < len(scripts) else ""},
+        }
+
+    for var_name in variable_map["text"]:
+        lower = var_name.lower()
+        if "title" in lower and var_name not in variables:
+            variables[var_name] = {
+                "name": var_name,
+                "type": "text",
+                "properties": {"content": title},
+            }
+        elif "subtitle" in lower and var_name not in variables:
+            variables[var_name] = {
+                "name": var_name,
+                "type": "text",
+                "properties": {"content": subtitle},
+            }
+
+
+    image_vars = variable_map["image"]
+    assigned_images = _map_image_urls_for_vars(
+        image_vars=image_vars,
+        selected_images=images,
+        fallback_url=PLACEHOLDER_IMAGE,
+    )
+    for var_name, img_url in assigned_images.items():
+        variables[var_name] = {
+            "name": var_name,
+            "type": "image",
+            "properties": {
+                "url": img_url,
+                "fit": "contain" if "logo" in var_name.lower() else HEYGEN_IMAGE_FIT,
+            },
+        }
+
+    character_var = _select_character_var(variable_map["character"])
+    if character_var:
+        variables[character_var] = {
+            "name": character_var,
+            "type": "character",
+            "properties": {
+                "character_id": avatar_id or AVATAR_ID,
+                "type": "avatar",
+            },
+        }
+
+    return {
+        "test": HEYGEN_TEST_MODE,
+        "caption": False,
+        "title": title,
+        "variables": variables,
+    }
+
+
+def split_into_2_parts(text: str) -> list[str]:
+    if not text:
+        return ["", ""]
+
+    parts = re.split(r'(?<=[.!?]) +', text)
+    parts = [p.strip() for p in parts if p.strip()]
+
+    if len(parts) >= 2:
+        mid = len(parts) // 2
+        return [
+            " ".join(parts[:mid]),
+            " ".join(parts[mid:])
+        ]
+
+    return [parts[0], parts[0]]
+
+
+def get_scene_count(variable_map: dict[str, list[str]]) -> int:
+    script_vars = [
+        name for name in variable_map["text"]
+        if name.lower().startswith("script")
+    ]
+
+    return len(script_vars) if script_vars else 1
+
+
 def _template_generate_url(template_id: str | None = None) -> str:
     return f"https://api.heygen.com/v2/template/{template_id or TEMPLATE_ID}/generate"
 
@@ -340,9 +470,35 @@ def dry_run_validate_ids(
     print("Dry-run: walidacja OK")
 
 
-# Buduje payload i od razu wysyla go do HeyGen.
-def generuj_wideo(url_obrazka: str, tytul: str, tresc: str, podtytul: str) -> requests.Response:
-    payload = build_payload(url_obrazka=url_obrazka, tytul=tytul, tresc=tresc, podtytul=podtytul)
+def generuj_wideo(image_urls: str, tytul: str, tresc: str, podtytul: str) -> requests.Response:
+    # payload = build_payload(url_obrazka=url_obrazka, tytul=tytul, tresc=tresc, podtytul=podtytul)
+    # payload = build_payload(scripts=[
+    #     "Pierwszy fragment tekstu",
+    #     "Drugi fragment tekstu",
+    #     "Trzeci fragment tekstu",
+    # ],
+    # images=[
+    #     "https://assets.aws.londynek.net/images/jdnews/2523317/370275-202311091558-lg.jpg.webp?t=1699545571.000000",
+    #     "https://assets.aws.londynek.net/images/jdnews/2523317/370275-202311091558-lg.jpg.webp?t=1699545571.000000",
+    #     "https://upload.wikimedia.org/wikipedia/commons/thumb/7/71/Black.png/250px-Black.png",
+    # ],
+# )
+    # scripts = split_into_2_parts(dane_do_filmu["skrypt"])
+
+    # payload = build_payload_2scripts(
+    #     scripts=scripts,
+    #     images = [dane_do_filmu["obraz"]] * 3,
+    #     avatar_id=AVATAR_ID,
+    # )
+
+    payload = build_payload_dynamic(
+        full_script=tresc,
+        images=image_urls,
+        title=tytul,
+        subtitle=podtytul,
+        avatar_id=AVATAR_ID,
+    )
+
     return requests.post(_template_generate_url(), json=payload, headers=HEADERS, timeout=30)
 
 
@@ -720,7 +876,7 @@ def generate_from_selection(
     video_title = (title or "").strip() or f"Wideo z {source_url}"
     video_subtitle = (subtitle or "").strip() or video_title
 
-    payload = build_payload(
+    payload = build_payload_dynamic(
         url_obrazka=image_url,
         tytul=video_title,
         tresc=script,
@@ -729,6 +885,7 @@ def generate_from_selection(
         template_id=selected_template_id,
         selected_images=selected_images,
     )
+    
     _attach_webhook_to_payload(payload, source_url)
     _save_last_payload(payload)
     return submit_payload(payload, template_id=selected_template_id)
@@ -850,37 +1007,56 @@ def _map_image_urls_for_vars(
         return {}
 
     ordered = _prioritize_logo_images(selected_images)
-    logos = [url for url in ordered if "logo" in url.lower()]
-    non_logos = [url for url in ordered if "logo" not in url.lower()]
+    if not ordered:
+        ordered = [fallback_url]
 
-    def pick_logo() -> str:
-        for url in logos:
-            if sprawdz_obraz(url):
-                return url
-        for url in ordered:
-            if sprawdz_obraz(url):
-                return url
-        return fallback_url
+    assigned = {}
 
-    def pick_background() -> str:
-        for url in non_logos:
-            if sprawdz_obraz(url):
-                return url
-        for url in ordered:
-            if sprawdz_obraz(url):
-                return url
-        return fallback_url
+    for i, var_name in enumerate(image_vars):
+        assigned[var_name] = ordered[i % len(ordered)]
 
-    assigned: dict[str, str] = {}
-    for var_name in image_vars:
-        name = var_name.lower()
-        if "logo" in name:
-            assigned[var_name] = pick_logo()
-        elif "background" in name or name.startswith("bg") or "_bg" in name:
-            assigned[var_name] = pick_background()
-        else:
-            assigned[var_name] = pick_background()
     return assigned
+
+# def _map_image_urls_for_vars(
+#     image_vars: list[str],
+#     selected_images: list[str],
+#     fallback_url: str,
+# ) -> dict[str, str]:
+#     if not image_vars:
+#         return {}
+
+#     ordered = _prioritize_logo_images(selected_images)
+#     logos = [url for url in ordered if "logo" in url.lower()]
+#     non_logos = [url for url in ordered if "logo" not in url.lower()]
+
+#     def pick_logo() -> str:
+#         for url in logos:
+#             if sprawdz_obraz(url):
+#                 return url
+#         for url in ordered:
+#             if sprawdz_obraz(url):
+#                 return url
+#         return fallback_url
+
+#     def pick_background() -> str:
+#         for url in non_logos:
+#             if sprawdz_obraz(url):
+#                 return url
+#         for url in ordered:
+#             if sprawdz_obraz(url):
+#                 return url
+#         return fallback_url
+
+#     assigned: dict[str, str] = {}
+#     for var_name in image_vars:
+#         name = var_name.lower()
+#         if "logo" in name:
+#             assigned[var_name] = pick_logo()
+#         elif "background" in name or name.startswith("bg") or "_bg" in name:
+#             assigned[var_name] = pick_background()
+#         else:
+#             assigned[var_name] = pick_background()
+#     return assigned
 
 
 # Wybiera glowny obraz do payloadu z uwzglednieniem preferencji logo.
@@ -997,16 +1173,49 @@ def build_payload_from_selection(
     video_title = (title or "").strip() or f"Wideo z {source_url}"
     video_subtitle = (subtitle or "").strip() or video_title
 
-    payload = build_payload(
-        url_obrazka=image_url,
-        tytul=video_title,
-        tresc=script,
-        podtytul=video_subtitle,
-        avatar_id=selected_avatar_id,
-        template_id=selected_template_id,
-        selected_images=ordered_images,
-        variable_map=variable_map,
-    )
+    scripts = split_into_2_parts(script)
+
+    variables = {}
+
+    variables["script1"] = {
+        "name": "script1",
+        "type": "text",
+        "properties": {"content": scripts[0]},
+    }
+
+    variables["script2"] = {
+        "name": "script2",
+        "type": "text",
+        "properties": {"content": scripts[1]},
+    }
+
+    variables["subtitle_"] = {
+        "name": "subtitle_",
+        "type": "text",
+        "properties": {"content": video_subtitle},
+    }
+
+    variables["image_"] = {
+        "name": "image_",
+        "type": "image",
+        "properties": {"url": image_url, "fit": "cover"},
+    }
+
+    variables["background_"] = {
+        "name": "background_",
+        "type": "character",
+        "properties": {
+            "character_id": selected_avatar_id or AVATAR_ID,
+            "type": "avatar",
+        },
+    }
+
+    payload = {
+        "test": HEYGEN_TEST_MODE,
+        "caption": False,
+        "title": video_title,
+        "variables": variables,
+}
     if script.strip():
         payload["script_input"] = script
     _attach_webhook_to_payload(payload, source_url)
@@ -1015,6 +1224,7 @@ def build_payload_from_selection(
     payload["template_id_selected"] = selected_template_id or TEMPLATE_ID
     payload["webhook_enabled"] = "callback_url" in payload
     _save_last_payload(payload)
+    print(json.dumps(payload, indent=2))
     return payload
 
 # Generuje wideo na podstawie ID artykulu pobieranego z API Londynka.
@@ -1042,10 +1252,15 @@ def run(
     images = event.get("images", [])
     obraz_url = PLACEHOLDER_IMAGE
 
+    image_urls = []
     for image in images:
-        image_url = image.get("url", "").replace("/image/", "/images/")
+        image_url = image.get("url", "").replace("/image/", "images/")
         file_name = image.get("file_name", "")
-        image["file_name"] = f"https://assets.aws.londynek.net/{image_url}{file_name}"
+        print(file_name)
+        image["file_name"] = f"https://assets.aws.londynek.net/{image_url}/{file_name}"
+        print(image["file_name"])
+        if sprawdz_obraz(image["file_name"]):
+            image_urls.append(image["file_name"])
 
     if len(images) > 1 and images[1].get("file_name"):
         obraz_url = images[1]["file_name"]
@@ -1058,25 +1273,24 @@ def run(
 
     pelny_skrypt = f"{event.get('headline', '')}. {cleanhtml(event.get('news_content', ''))[:1850]}".strip()
     if short_test:
-        pelny_skrypt = pelny_skrypt[:260] if pelny_skrypt else SHORT_TEST_TEXT
+        pelny_skrypt = pelny_skrypt[:210] if pelny_skrypt else SHORT_TEST_TEXT
 
     dane_do_filmu = {
         "obraz": obraz_url,
-        "tytul": event.get("title") or "Test",
-        "skrypt": pelny_skrypt or "Test.",
-        "podtytul": event.get("title_en") or "Test",
+        "tytul": event.get("title") or "Test.",
+        "skrypt": pelny_skrypt or "T",
+        "podtytul": event.get("title_en") or event.get("title") or "Test",
     }
 
     if dry_run:
         dry_run_validate_ids(avatar_id=AVATAR_ID, template_id=TEMPLATE_ID)
 
-    payload = build_payload(
-        url_obrazka=dane_do_filmu["obraz"],
-        tytul=dane_do_filmu["tytul"],
-        tresc=dane_do_filmu["skrypt"],
-        podtytul=dane_do_filmu["podtytul"],
-        template_id=TEMPLATE_ID,
-        selected_images=[dane_do_filmu["obraz"]],
+    payload = build_payload_dynamic(
+    full_script=dane_do_filmu["skrypt"],
+    images=image_urls if image_urls else [dane_do_filmu["obraz"]],
+    title=dane_do_filmu["tytul"],
+    subtitle=dane_do_filmu["podtytul"],
+    avatar_id=AVATAR_ID,
     )
     # CLI/API po news_id nie jest lokalnym renderem, webhook może być dołączony jeśli skonfigurowany.
     _attach_webhook_to_payload(payload, request_origin or endpoint)
