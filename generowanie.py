@@ -802,48 +802,6 @@ def _map_image_urls_for_vars(
 
     return assigned
 
-# def _map_image_urls_for_vars(
-#     image_vars: list[str],
-#     selected_images: list[str],
-#     fallback_url: str,
-# ) -> dict[str, str]:
-#     if not image_vars:
-#         return {}
-
-#     ordered = _prioritize_logo_images(selected_images)
-#     logos = [url for url in ordered if "logo" in url.lower()]
-#     non_logos = [url for url in ordered if "logo" not in url.lower()]
-
-#     def pick_logo() -> str:
-#         for url in logos:
-#             if sprawdz_obraz(url):
-#                 return url
-#         for url in ordered:
-#             if sprawdz_obraz(url):
-#                 return url
-#         return fallback_url
-
-#     def pick_background() -> str:
-#         for url in non_logos:
-#             if sprawdz_obraz(url):
-#                 return url
-#         for url in ordered:
-#             if sprawdz_obraz(url):
-#                 return url
-#         return fallback_url
-
-#     assigned: dict[str, str] = {}
-#     for var_name in image_vars:
-#         name = var_name.lower()
-#         if "logo" in name:
-#             assigned[var_name] = pick_logo()
-#         elif "background" in name or name.startswith("bg") or "_bg" in name:
-#             assigned[var_name] = pick_background()
-#         else:
-#             assigned[var_name] = pick_background()
-#     return assigned
-
-
 def _get_primary_image(selected_images: list[str], prefer_logo: bool = False) -> str:
     ordered = _prioritize_logo_images(selected_images)
     logos = [image_url for image_url in ordered if "logo" in image_url.lower()]
