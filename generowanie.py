@@ -359,18 +359,6 @@ def dry_run_validate_ids(
 
 
 def generuj_wideo(image_urls: str, tytul: str, tresc: str, podtytul: str) -> requests.Response:
-    # payload = build_payload(url_obrazka=url_obrazka, tytul=tytul, tresc=tresc, podtytul=podtytul)
-    # payload = build_payload(scripts=[
-    #     "Pierwszy fragment tekstu",
-    #     "Drugi fragment tekstu",
-    #     "Trzeci fragment tekstu",
-    # ],
-    # images=[
-    #     "https://assets.aws.londynek.net/images/jdnews/2523317/370275-202311091558-lg.jpg.webp?t=1699545571.000000",
-    #     "https://assets.aws.londynek.net/images/jdnews/2523317/370275-202311091558-lg.jpg.webp?t=1699545571.000000",
-    #     "https://upload.wikimedia.org/wikipedia/commons/thumb/7/71/Black.png/250px-Black.png",
-    # ],
-
     payload = build_payload_dynamic(
         full_script=tresc,
         images=image_urls,
