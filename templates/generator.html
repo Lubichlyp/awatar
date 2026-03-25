@@ -99,6 +99,20 @@
 
     .btn.alt { background: var(--accent-2); }
 
+    #tested-urls pre {
+      margin: 0 0 6px;
+      padding: 8px 10px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #fff;
+      color: var(--accent-2);
+      cursor: pointer;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    #tested-urls pre:last-child { margin-bottom: 12px; }
+
     .error {
       margin-top: 12px;
       border: 1px solid #cf5a3a;
@@ -216,18 +230,29 @@
 <body>
   <div class="wrap">
     <section class="hero">
-      <h1>Generator wideo z URL</h1>
+      <h1><a href="/app">Generator wideo z URL</a></h1>
       <p>Wklej adres strony, wybierz fragmenty treści i obraz, a system wygeneruje payload do HeyGen.</p>
     </section>
 
     <section class="card">
+      <div id="tested-urls">
+        <pre>https://landowska-design.pl/galeria.php?y=2020&d=2020_gdynia_silva&screen_dir=1500/</pre>
+        <pre>https://londynek.net/accommodation/ad?ad_id=1334889</pre>
+        <pre>https://londynek.net/ukipedia/article?jdnews_id=4777267</pre>
+        <pre>https://krzywapodloga.pl/blog/panele-winylowe-podlogi-pcv-projektowanie-i-wykonawstwo</pre>
+        <pre>https://pstconsulting.pl/po-godzinach/graficzne-badanie-normalnosci-rozkladu/</pre>
+      </div>
       <form method="post" action="/scan" class="row">
-        <input class="input" type="url" name="url" placeholder="https://example.com/artykul" required style="flex: 1; min-width: 240px;" />
+        <input id="scanUrlInput" class="input" type="url" name="url" placeholder="https://example.com/artykul" required style="flex: 1; min-width: 240px;" />
         <button class="btn" type="submit">Skanuj stronę</button>
       </form>
 
       {% if error %}
       <div class="error">{{ error }}</div>
+      {% endif %}
+
+      {% if avatar_warning %}
+      <div class="error">{{ avatar_warning }}</div>
       {% endif %}
 
       {% if result %}
@@ -238,6 +263,7 @@
     {% if scan %}
     <form class="card" method="post" action="/preview-web">
       <input type="hidden" name="source_url" value="{{ scan.source_url }}" />
+      <input type="hidden" name="scan_snapshot" value='{{ scan_snapshot if scan_snapshot is defined and scan_snapshot else (scan | tojson) }}' />
 
       <div class="row" style="margin-bottom: 10px;">
         <input class="input" type="text" name="title" value="{{ form_data.title if form_data else scan.title }}" placeholder="Tytuł wideo" />
@@ -249,12 +275,18 @@
         <select id="selected_avatar_id" name="selected_avatar_id" class="input" style="max-width: 520px;">
           {% set current_avatar = form_data.selected_avatar_id if form_data else selected_avatar_id %}
           {% for avatar in avatars %}
-          <option value="{{ avatar.id }}" data-thumbnail="{{ avatar.thumbnail }}" {% if avatar.id == current_avatar %}selected{% endif %}>
+          <option
+            value="{{ avatar.id }}"
+            data-thumbnail="{{ avatar.thumbnail }}"
+            data-avatar-name="{{ avatar.name }}"
+            {% if avatar.id == current_avatar %}selected{% endif %}
+          >
             {{ avatar.name }} ({{ avatar.id }})
           </option>
           {% endfor %}
         </select>
       </div>
+      <div id="avatarLoadStatus" class="error" style="display:none;"></div>
       <div class="row" style="margin-bottom: 10px;">
         <label for="selected_template_id" style="min-width: 110px; color: #4f4a45;">Szablon:</label>
         <select id="selected_template_id" name="selected_template_id" class="input" style="max-width: 520px;">
@@ -266,14 +298,15 @@
           {% endfor %}
         </select>
       </div>
+      <div id="templateLoadStatus" class="error" style="display:none;"></div>
       <div class="avatar-preview">
         <img id="avatarPreviewImage" alt="Podgląd awatara" />
-        <small id="avatarPreviewText">Brak miniatury dla wybranego awatara.</small>
+        <small id="avatarPreviewText">Wybierz awatar, aby zobaczyć podgląd.</small>
       </div>
 
       <div class="row" style="margin-bottom: 14px;">
-        <label><input type="checkbox" name="dry_run" checked /> dry-run (walidacja ID)</label>
-        <label><input type="checkbox" name="short_test" checked /> short-test (krótki skrypt)</label>
+        <label><input type="checkbox" id="dry_run" name="dry_run" {% if not form_data or form_data.dry_run %}checked{% endif %} /> dry-run (walidacja ID)</label>
+        <label><input type="checkbox" name="short_test" {% if not form_data or form_data.short_test %}checked{% endif %} /> short-test (krótki skrypt)</label>
       </div>
 
       <div class="grid">
@@ -338,11 +371,17 @@
     {% if payload_preview %}
     <section class="card">
       <h3>Podgląd payloadu HeyGen</h3>
+      <p style="margin: 0 0 10px; color: #4f4a45; font-size: 0.9rem;">
+        Ten podgląd jest budowany lokalnie na podstawie danych formularza. Walidacja HeyGen następuje dopiero przy wysyłce.
+      </p>
 
       <form method="post" action="/generate-web" class="row" style="margin-top: 12px;">
         {% set current_template_for_send = form_data.selected_template_id if form_data else selected_template_id %}
         <input type="hidden" name="source_url" value="{{ form_data.source_url if form_data else scan.source_url }}" />
+        <input type="hidden" name="scan_snapshot" value='{{ scan_snapshot if scan_snapshot is defined else "" }}' />
         <input type="hidden" name="selected_template_id" value="{{ current_template_for_send }}" />
+        {% if form_data and form_data.dry_run %}<input type="hidden" name="dry_run" value="on" />{% endif %}
+        {% if form_data and form_data.short_test %}<input type="hidden" name="short_test" value="on" />{% endif %}
         <textarea class="result" name="payload_json">{{ payload_preview }}</textarea>
         <label for="heygen_endpoint_url" style="width:100%; color:#4f4a45; margin-top:8px;">Endpoint URL</label>
         <input
@@ -360,10 +399,150 @@
   </div>
   <script>
     (function () {
+      const testedUrls = document.getElementById("tested-urls");
+      const scanUrlInput = document.getElementById("scanUrlInput");
+      if (!testedUrls || !scanUrlInput) return;
+
+      testedUrls.addEventListener("click", (event) => {
+        const target = event.target;
+        if (!(target instanceof HTMLElement) || target.tagName !== "PRE") return;
+        const value = target.textContent ? target.textContent.trim() : "";
+        if (!value) return;
+        scanUrlInput.value = value;
+        scanUrlInput.focus();
+        scanUrlInput.select();
+      });
+    })();
+
+    (function () {
+      const avatarSelect = document.getElementById("selected_avatar_id");
+      const templateSelect = document.getElementById("selected_template_id");
+      const avatarStatus = document.getElementById("avatarLoadStatus");
+      const templateStatus = document.getElementById("templateLoadStatus");
+      const dryRunCheckbox = document.getElementById("dry_run");
+
+      function setStatus(node, message) {
+        if (!node) return;
+        if (message) {
+          node.textContent = message;
+          node.style.display = "block";
+          return;
+        }
+        node.textContent = "";
+        node.style.display = "none";
+      }
+
+      function replaceAvatarOptions(items) {
+        if (!avatarSelect || !Array.isArray(items) || items.length === 0) return;
+        const selectedValue = avatarSelect.value;
+        avatarSelect.innerHTML = "";
+        items.forEach((avatar) => {
+          const option = document.createElement("option");
+          option.value = avatar.id || "";
+          option.dataset.thumbnail = avatar.thumbnail || "";
+          option.dataset.avatarName = avatar.name || avatar.id || "";
+          option.textContent = `${avatar.name || avatar.id} (${avatar.id})`;
+          if ((avatar.id || "") === selectedValue) {
+            option.selected = true;
+          }
+          avatarSelect.appendChild(option);
+        });
+        if (!avatarSelect.value && avatarSelect.options.length > 0) {
+          avatarSelect.options[0].selected = true;
+        }
+        avatarSelect.dispatchEvent(new Event("change"));
+      }
+
+      function replaceTemplateOptions(items) {
+        if (!templateSelect || !Array.isArray(items) || items.length === 0) return;
+        const selectedValue = templateSelect.value;
+        templateSelect.innerHTML = "";
+        items.forEach((tpl) => {
+          const option = document.createElement("option");
+          option.value = tpl.id || "";
+          option.textContent = `${tpl.name || tpl.id} (${tpl.id})`;
+          if ((tpl.id || "") === selectedValue) {
+            option.selected = true;
+          }
+          templateSelect.appendChild(option);
+        });
+        if (!templateSelect.value && templateSelect.options.length > 0) {
+          templateSelect.options[0].selected = true;
+        }
+      }
+
+      function loadAvatars() {
+        if (!avatarSelect) return;
+        const dryRun = dryRunCheckbox ? dryRunCheckbox.checked : true;
+        setStatus(avatarStatus, "Ładowanie listy awatarów...");
+        fetch(`/api/avatars?dry_run=${dryRun ? "true" : "false"}`)
+          .then((response) => response.json())
+          .then((payload) => {
+            replaceAvatarOptions(payload.items || []);
+            setStatus(avatarStatus, payload.warning || "");
+          })
+          .catch((error) => {
+            setStatus(avatarStatus, `Nie udało się pobrać listy awatarów: ${error}`);
+          });
+      }
+
+      function loadTemplates() {
+        if (!templateSelect) return;
+        const dryRun = dryRunCheckbox ? dryRunCheckbox.checked : true;
+        setStatus(templateStatus, "Ładowanie listy szablonów...");
+        fetch(`/api/templates?dry_run=${dryRun ? "true" : "false"}`)
+          .then((response) => response.json())
+          .then((payload) => {
+            replaceTemplateOptions(payload.items || []);
+            setStatus(templateStatus, payload.warning || "");
+          })
+          .catch((error) => {
+            setStatus(templateStatus, `Nie udało się pobrać listy szablonów: ${error}`);
+          });
+      }
+
+      if (avatarSelect) {
+        loadAvatars();
+      }
+
+      if (templateSelect) {
+        loadTemplates();
+      }
+
+      if (dryRunCheckbox) {
+        dryRunCheckbox.addEventListener("change", () => {
+          loadAvatars();
+          loadTemplates();
+        });
+      }
+    })();
+
+    (function () {
       const select = document.getElementById("selected_avatar_id");
       const img = document.getElementById("avatarPreviewImage");
       const txt = document.getElementById("avatarPreviewText");
       if (!select || !img || !txt) return;
+
+      function getAvailableThumbnailCount() {
+        return Array.from(select.options).filter((option) => {
+          const src = option.dataset && option.dataset.thumbnail ? option.dataset.thumbnail.trim() : "";
+          return Boolean(src);
+        }).length;
+      }
+
+      function setMissingThumbnailMessage(option) {
+        const avatarName = (option && option.dataset && option.dataset.avatarName) ? option.dataset.avatarName.trim() : "";
+        const avatarId = option ? option.value.trim() : "";
+        const availableCount = getAvailableThumbnailCount();
+        const totalCount = select.options.length;
+        const label = avatarName || avatarId || "wybranego awatara";
+
+        if (availableCount > 0) {
+          txt.textContent = `Brak miniatury dla awatara "${label}". Miniatury są dostępne dla ${availableCount} z ${totalCount} pozycji na liście.`;
+          return;
+        }
+        txt.textContent = `Brak miniatury dla awatara "${label}" i dla pozostałych pozycji na liście.`;
+      }
 
       function updateAvatarPreview() {
         const option = select.options[select.selectedIndex];
@@ -375,9 +554,16 @@
         } else {
           img.removeAttribute("src");
           img.style.display = "none";
-          txt.textContent = "Brak miniatury dla wybranego awatara.";
+          setMissingThumbnailMessage(option);
         }
       }
+
+      img.addEventListener("error", () => {
+        img.removeAttribute("src");
+        img.style.display = "none";
+        const option = select.options[select.selectedIndex];
+        setMissingThumbnailMessage(option);
+      });
 
       select.addEventListener("change", updateAvatarPreview);
       updateAvatarPreview();
