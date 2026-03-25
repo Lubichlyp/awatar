@@ -2,6 +2,7 @@ import argparse
 import json
 import os
 import re
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 from urllib.parse import urljoin, urlparse
@@ -15,6 +16,7 @@ load_dotenv()
 API_KEY = os.getenv("API_KEY")
 TEMPLATE_ID = os.getenv("TEMPLATE_ID", "581f6d97e1224c38bf3bad1567e13c2f")
 AVATAR_ID = os.getenv("AVATAR_ID", "Annie_Casual_Standing_Front_2_public")
+AVATAR_FILTER_PREFIX = os.getenv("AVATAR_FILTER_PREFIX", "Annie").strip()
 VOICE_ID = os.getenv("VOICE_ID")
 HEYGEN_WEBHOOK_URL = os.getenv("HEYGEN_WEBHOOK_URL", "").strip()
 HEYGEN_TEST_MODE = os.getenv("HEYGEN_TEST_MODE", "true").lower() == "true"
@@ -31,20 +33,33 @@ HEADERS = {
 }
 TEMPLATE_DEFINITION_CACHE: dict[str, dict[str, Any]] = {}
 LAST_PAYLOAD_PATH = Path("data_settings/lat-payload.json")
+LAST_AVATARS_DEBUG_PATH = Path("data_settings/last-avatars-debug.json")
+AVATARS_CACHE_PATH = Path("data_settings/avatars-cache.json")
+TEMPLATES_CACHE_PATH = Path("data_settings/templates-cache.json")
+HEYGEN_LIST_TIMEOUT = float(os.getenv("HEYGEN_LIST_TIMEOUT", "30"))
+DEFAULT_TEMPLATE_VARIABLE_MAP = {
+    "image": ["background", "logo"],
+    "text": ["script", "title", "subtitle"],
+    "character": ["avatar"],
+}
 
 
+# Zwraca endpoint generowania wideo dla wskazanego template'u.
 def _template_generate_url(template_id: str | None = None) -> str:
     return f"https://api.heygen.com/v2/template/{template_id or TEMPLATE_ID}/generate"
 
 
+# Zwraca endpoint szczegolow wskazanego template'u.
 def _template_detail_url(template_id: str | None = None) -> str:
     return f"https://api.heygen.com/v2/template/{template_id or TEMPLATE_ID}"
 
 
+# Usuwa znaczniki HTML i encje z tekstu.
 def cleanhtml(raw_html: str) -> str:
     return re.sub(CLEANR, "", raw_html or "")
 
 
+# Sprawdza, czy URL obrazka odpowiada poprawnym statusem HTTP.
 def sprawdz_obraz(url: str) -> bool:
     try:
         r = requests.get(url, stream=True, timeout=5)
@@ -53,6 +68,7 @@ def sprawdz_obraz(url: str) -> bool:
         return False
 
 
+# Rekurencyjnie zbiera identyfikatory z odpowiedzi API.
 def _extract_ids(payload: Any, known_keys: tuple[str, ...]) -> set[str]:
     found: set[str] = set()
     if isinstance(payload, dict):
@@ -66,6 +82,7 @@ def _extract_ids(payload: Any, known_keys: tuple[str, ...]) -> set[str]:
     return found
 
 
+# Waliduje istnienie wskazanego ID przez wybrane endpointy HeyGen.
 def _validate_id_via_endpoint(
     endpoint: str,
     expected_id: str,
@@ -81,6 +98,70 @@ def _validate_id_via_endpoint(
         raise RuntimeError(f"Dry-run: {label} '{expected_id}' nie istnieje lub nie jest dostępny dla API key.")
 
 
+# Odczytuje i normalizuje liste obiektow z lokalnego cache.
+def _read_cached_list(cache_path: Path) -> list[dict[str, str]]:
+    if not cache_path.exists():
+        return []
+    try:
+        payload = json.loads(cache_path.read_text(encoding="utf-8"))
+    except Exception:
+        return []
+    items = payload.get("items", []) if isinstance(payload, dict) else []
+    if not isinstance(items, list):
+        return []
+    normalized: list[dict[str, str]] = []
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        item_id = str(item.get("id", "")).strip()
+        item_name = str(item.get("name", "")).strip()
+        if not item_id or not item_name:
+            continue
+        normalized_item = {"id": item_id, "name": item_name}
+        if "thumbnail" in item:
+            normalized_item["thumbnail"] = str(item.get("thumbnail", "")).strip()
+        normalized.append(normalized_item)
+    return normalized
+
+
+# Zwraca liste awatarow z cache z uwzglednieniem lokalnego filtra.
+def read_cached_avatars() -> list[dict[str, str]]:
+    return _filter_avatars(_read_cached_list(AVATARS_CACHE_PATH))
+
+
+# Zwraca liste template'ow z lokalnego cache.
+def read_cached_templates() -> list[dict[str, str]]:
+    return _read_cached_list(TEMPLATES_CACHE_PATH)
+
+
+# Zapisuje liste obiektow do lokalnego cache z timestampem.
+def _write_cached_list(cache_path: Path, items: list[dict[str, str]]) -> None:
+    cache_path.parent.mkdir(parents=True, exist_ok=True)
+    cache_path.write_text(
+        json.dumps(
+            {"saved_at": datetime.now(timezone.utc).isoformat(), "items": items},
+            ensure_ascii=False,
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+
+
+# Ogranicza liste awatarow do pozycji pasujacych do skonfigurowanego prefiksu.
+def _filter_avatars(avatars: list[dict[str, str]]) -> list[dict[str, str]]:
+    prefix = AVATAR_FILTER_PREFIX.strip().lower()
+    if not prefix:
+        return avatars
+
+    filtered = [
+        avatar
+        for avatar in avatars
+        if avatar.get("id", "").lower().startswith(prefix) or avatar.get("name", "").lower().startswith(prefix)
+    ]
+    return filtered or avatars
+
+
+# Rozpoznaje typ zmiennej template'u na podstawie struktury i nazw pol.
 def _normalize_template_var_type(node: dict[str, Any], parent_key: str = "") -> str:
     properties = node.get("properties", {}) if isinstance(node, dict) else {}
     if isinstance(properties, dict):
@@ -118,6 +199,7 @@ def _normalize_template_var_type(node: dict[str, Any], parent_key: str = "") -> 
     return ""
 
 
+# Heurystycznie wyciaga liste zmiennych z definicji template'u.
 def _extract_template_variables(payload: Any) -> list[dict[str, str]]:
     variables: list[dict[str, str]] = []
     reserved_keys = {"properties", "property", "props", "config", "metadata", "settings", "style", "data"}
@@ -159,6 +241,7 @@ def _extract_template_variables(payload: Any) -> list[dict[str, str]]:
     return unique
 
 
+# Pobiera i cache'uje pelna definicje template'u z HeyGen.
 def get_template_definition(template_id: str | None = None) -> dict[str, Any]:
     tpl_id = template_id or TEMPLATE_ID
     if tpl_id in TEMPLATE_DEFINITION_CACHE:
@@ -172,6 +255,7 @@ def get_template_definition(template_id: str | None = None) -> dict[str, Any]:
     return data
 
 
+# Zwraca mape zmiennych template'u pogrupowana wedlug typu.
 def get_template_variable_map(template_id: str | None = None) -> dict[str, list[str]]:
     detail = get_template_definition(template_id)
     grouped = {"image": [], "text": [], "character": []}
@@ -198,6 +282,19 @@ def get_template_variable_map(template_id: str | None = None) -> dict[str, list[
     return grouped
 
 
+# Zwraca mape zmiennych z cache lub bezpieczny zestaw domyslny dla preview.
+def get_template_variable_map_cached_or_default(template_id: str | None = None) -> dict[str, list[str]]:
+    tpl_id = template_id or TEMPLATE_ID
+    if tpl_id in TEMPLATE_DEFINITION_CACHE:
+        return get_template_variable_map(tpl_id)
+    return {
+        "image": list(DEFAULT_TEMPLATE_VARIABLE_MAP["image"]),
+        "text": list(DEFAULT_TEMPLATE_VARIABLE_MAP["text"]),
+        "character": list(DEFAULT_TEMPLATE_VARIABLE_MAP["character"]),
+    }
+
+
+# Weryfikuje dostepnosc template'u, awatara i glosu dla trybu dry-run.
 def dry_run_validate_ids(
     avatar_id: str | None = None,
     template_id: str | None = None,
@@ -243,11 +340,13 @@ def dry_run_validate_ids(
     print("Dry-run: walidacja OK")
 
 
+# Buduje payload i od razu wysyla go do HeyGen.
 def generuj_wideo(url_obrazka: str, tytul: str, tresc: str, podtytul: str) -> requests.Response:
     payload = build_payload(url_obrazka=url_obrazka, tytul=tytul, tresc=tresc, podtytul=podtytul)
     return requests.post(_template_generate_url(), json=payload, headers=HEADERS, timeout=30)
 
 
+# Sklada payload HeyGen na podstawie tekstow, obrazow i konfiguracji template'u.
 def build_payload(
     url_obrazka: str,
     tytul: str,
@@ -256,8 +355,9 @@ def build_payload(
     avatar_id: str | None = None,
     template_id: str | None = None,
     selected_images: list[str] | None = None,
+    variable_map: dict[str, list[str]] | None = None,
 ) -> dict[str, Any]:
-    variable_map = get_template_variable_map(template_id)
+    variable_map = variable_map or get_template_variable_map(template_id)
     image_vars = variable_map["image"]
     character_var = _select_character_var(variable_map["character"])
     text_vars = variable_map["text"]
@@ -305,14 +405,44 @@ def build_payload(
     return payload
 
 
+# Pobiera liste awatarow z HeyGen, filtruje ja i zapisuje do cache.
 def list_avatars() -> list[dict[str, str]]:
-    response = requests.get("https://api.heygen.com/v2/avatars", headers=HEADERS, timeout=20)
-    if response.status_code != 200:
-        raise RuntimeError(f"Błąd pobierania awatarów: {response.status_code} {response.text}")
-
-    data = response.json()
     avatars: list[dict[str, str]] = []
     seen_ids: set[str] = set()
+
+    def extract_thumbnail(node: Any) -> str:
+        if not isinstance(node, dict):
+            return ""
+
+        direct_keys = (
+            "preview_image_url",
+            "image_url",
+            "thumbnail_url",
+            "thumbnail",
+            "preview_url",
+            "poster_url",
+            "icon_url",
+            "photo_url",
+            "image",
+        )
+        for key in direct_keys:
+            value = node.get(key)
+            if isinstance(value, str) and value.strip().startswith(("http://", "https://")):
+                return value.strip()
+
+        # HeyGen potrafi zwracać obrazki w zagnieżdżonych polach metadata/assets.
+        for key in ("preview", "thumbnail", "image", "images", "assets", "metadata"):
+            value = node.get(key)
+            if isinstance(value, dict):
+                nested = extract_thumbnail(value)
+                if nested:
+                    return nested
+            elif isinstance(value, list):
+                for item in value:
+                    nested = extract_thumbnail(item)
+                    if nested:
+                        return nested
+        return ""
 
     def walk(node: Any) -> None:
         if isinstance(node, dict):
@@ -320,12 +450,7 @@ def list_avatars() -> list[dict[str, str]]:
             if avatar_id and avatar_id not in seen_ids:
                 seen_ids.add(avatar_id)
                 avatar_name = str(node.get("avatar_name") or node.get("name") or node.get("title") or avatar_id)
-                thumbnail = str(
-                    node.get("preview_image_url")
-                    or node.get("image_url")
-                    or node.get("thumbnail_url")
-                    or ""
-                )
+                thumbnail = extract_thumbnail(node)
                 avatars.append({"id": avatar_id, "name": avatar_name, "thumbnail": thumbnail})
             for value in node.values():
                 walk(value)
@@ -333,25 +458,30 @@ def list_avatars() -> list[dict[str, str]]:
             for item in node:
                 walk(item)
 
-    walk(data)
-    if not avatars:
-        return [{"id": AVATAR_ID, "name": AVATAR_ID, "thumbnail": ""}]
-    return sorted(avatars, key=lambda a: a["name"].lower())
+    try:
+        response = requests.get("https://api.heygen.com/v2/avatars", headers=HEADERS, timeout=HEYGEN_LIST_TIMEOUT)
+        if response.status_code != 200:
+            raise RuntimeError(f"Błąd pobierania awatarów: {response.status_code} {response.text}")
+        data = response.json()
+        walk(data)
+        if not avatars:
+            raise RuntimeError("Błąd pobierania awatarów: API zwróciło pustą listę.")
+        avatars = sorted(avatars, key=lambda a: a["name"].lower())
+        avatars = _filter_avatars(avatars)
+        _write_cached_list(AVATARS_CACHE_PATH, avatars)
+        _save_last_avatars_debug(raw_response=data, avatars=avatars)
+        return avatars
+    except Exception as exc:
+        cached_avatars = _read_cached_list(AVATARS_CACHE_PATH)
+        if cached_avatars:
+            return _filter_avatars(cached_avatars)
+        raise RuntimeError(f"{exc}. Brak lokalnego cache awatarów.") from exc
 
 
+# Pobiera liste template'ow z HeyGen i zapisuje ja do cache.
 def list_templates() -> list[dict[str, str]]:
     errors: list[str] = []
     data: Any = None
-    for endpoint in ("https://api.heygen.com/v2/templates", "https://api.heygen.com/v2/template"):
-        response = requests.get(endpoint, headers=HEADERS, timeout=20)
-        if response.status_code == 200:
-            data = response.json()
-            break
-        errors.append(f"{endpoint}: {response.status_code}")
-
-    if data is None:
-        raise RuntimeError(f"Błąd pobierania szablonów: {' | '.join(errors)}")
-
     templates: list[dict[str, str]] = []
     seen_ids: set[str] = set()
 
@@ -368,12 +498,31 @@ def list_templates() -> list[dict[str, str]]:
             for item in node:
                 walk(item)
 
-    walk(data)
-    if not templates:
-        return [{"id": TEMPLATE_ID, "name": TEMPLATE_ID}]
-    return sorted(templates, key=lambda t: t["name"].lower())
+    try:
+        for endpoint in ("https://api.heygen.com/v2/templates", "https://api.heygen.com/v2/template"):
+            response = requests.get(endpoint, headers=HEADERS, timeout=HEYGEN_LIST_TIMEOUT)
+            if response.status_code == 200:
+                data = response.json()
+                break
+            errors.append(f"{endpoint}: {response.status_code}")
+
+        if data is None:
+            raise RuntimeError(f"Błąd pobierania szablonów: {' | '.join(errors)}")
+
+        walk(data)
+        if not templates:
+            raise RuntimeError("Błąd pobierania szablonów: API zwróciło pustą listę.")
+        templates = sorted(templates, key=lambda t: t["name"].lower())
+        _write_cached_list(TEMPLATES_CACHE_PATH, templates)
+        return templates
+    except Exception as exc:
+        cached_templates = _read_cached_list(TEMPLATES_CACHE_PATH)
+        if cached_templates:
+            return cached_templates
+        raise RuntimeError(f"{exc}. Brak lokalnego cache szablonów.") from exc
 
 
+# Sprawdza, czy URL wskazuje na lokalny host.
 def is_localhost_url(url: str) -> bool:
     try:
         parsed = urlparse((url or "").strip())
@@ -383,6 +532,7 @@ def is_localhost_url(url: str) -> bool:
     return host in {"localhost", "127.0.0.1", "::1"}
 
 
+# Dolacza webhook do payloadu, jesli konfiguracja na to pozwala.
 def _attach_webhook_to_payload(payload: dict[str, Any], source_url: str | None) -> None:
     if not HEYGEN_WEBHOOK_URL:
         return
@@ -391,6 +541,7 @@ def _attach_webhook_to_payload(payload: dict[str, Any], source_url: str | None) 
     payload["callback_url"] = HEYGEN_WEBHOOK_URL
 
 
+# Wysyla gotowy payload do HeyGen po usunieciu pol pomocniczych.
 def submit_payload(payload: dict[str, Any], template_id: str | None = None) -> dict[str, Any]:
     payload_to_send = dict(payload)
     payload_to_send.pop("selected_images", None)
@@ -408,6 +559,7 @@ def submit_payload(payload: dict[str, Any], template_id: str | None = None) -> d
     return wynik.json()
 
 
+# Zapisuje ostatnio wygenerowany payload do pliku.
 def _save_last_payload(payload: dict[str, Any]) -> None:
     LAST_PAYLOAD_PATH.parent.mkdir(parents=True, exist_ok=True)
     LAST_PAYLOAD_PATH.write_text(
@@ -416,6 +568,27 @@ def _save_last_payload(payload: dict[str, Any]) -> None:
     )
 
 
+# Zapisuje diagnostyke ostatniego pobrania listy awatarow.
+def _save_last_avatars_debug(*, raw_response: Any, avatars: list[dict[str, str]]) -> None:
+    LAST_AVATARS_DEBUG_PATH.parent.mkdir(parents=True, exist_ok=True)
+    LAST_AVATARS_DEBUG_PATH.write_text(
+        json.dumps(
+            {
+                "selected_avatar_id": AVATAR_ID,
+                "avatar_count": len(avatars),
+                "avatars_with_thumbnail": sum(1 for avatar in avatars if avatar.get("thumbnail")),
+                "selected_avatar_entry": next((avatar for avatar in avatars if avatar.get("id") == AVATAR_ID), None),
+                "avatars": avatars,
+                "raw_response": raw_response,
+            },
+            ensure_ascii=False,
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+
+
+# Wyciaga adresy obrazkow logo z sekcji variables payloadu.
 def _extract_logo_urls_from_payload(payload: dict[str, Any]) -> set[str]:
     urls: set[str] = set()
     variables = payload.get("variables", {})
@@ -435,6 +608,7 @@ def _extract_logo_urls_from_payload(payload: dict[str, Any]) -> set[str]:
     return urls
 
 
+# Skanuje strone WWW i zwraca teksty oraz obrazy do dalszego wyboru.
 def scan_webpage(url: str, max_texts: int = 20, max_images: int = 12) -> dict[str, Any]:
     parsed = urlparse(url)
     if parsed.scheme not in {"http", "https"}:
@@ -512,6 +686,7 @@ def scan_webpage(url: str, max_texts: int = 20, max_images: int = 12) -> dict[st
     }
 
 
+# Generuje i wysyla payload na podstawie elementow wybranych w formularzu.
 def generate_from_selection(
     *,
     source_url: str,
@@ -559,6 +734,7 @@ def generate_from_selection(
     return submit_payload(payload, template_id=selected_template_id)
 
 
+# Buduje finalny skrypt z zaznaczonych tekstow lub tresci wpisanej recznie.
 def build_script(selected_texts: list[str], short_test: bool, script_text: str | None = None) -> str:
     if script_text and script_text.strip():
         base = " ".join(script_text.split())
@@ -572,6 +748,7 @@ def build_script(selected_texts: list[str], short_test: bool, script_text: str |
     return " ".join(cleaned)[:1850]
 
 
+# Sortuje obrazy tak, aby logotypy byly obslugiwane priorytetowo.
 def _prioritize_logo_images(image_urls: list[str]) -> list[str]:
     unique: list[str] = []
     seen: set[str] = set()
@@ -584,6 +761,7 @@ def _prioritize_logo_images(image_urls: list[str]) -> list[str]:
     return sorted(unique, key=lambda url: ("logo" not in url.lower(),))
 
 
+# Wybiera preferowana nazwe zmiennej obrazka w template'cie.
 def _select_preferred_image_var(image_vars: list[str]) -> str:
     if not image_vars:
         return ""
@@ -604,6 +782,7 @@ def _select_preferred_image_var(image_vars: list[str]) -> str:
     return weighted[0]
 
 
+# Wybiera preferowana nazwe zmiennej awatara w template'cie.
 def _select_character_var(character_vars: list[str]) -> str:
     if not character_vars:
         return ""
@@ -621,6 +800,7 @@ def _select_character_var(character_vars: list[str]) -> str:
     return weighted[0]
 
 
+# Mapuje tresci formularza na zmienne tekstowe template'u.
 def _build_text_mapping(text_vars: list[str], *, tytul: str, tresc: str, podtytul: str) -> list[tuple[str, str]]:
     if not text_vars:
         return []
@@ -660,6 +840,7 @@ def _build_text_mapping(text_vars: list[str], *, tytul: str, tresc: str, podtytu
     return [(text_vars[0], tresc)]
 
 
+# Przypisuje wybrane obrazy do odpowiednich zmiennych obrazkowych template'u.
 def _map_image_urls_for_vars(
     image_vars: list[str],
     selected_images: list[str],
@@ -702,6 +883,7 @@ def _map_image_urls_for_vars(
     return assigned
 
 
+# Wybiera glowny obraz do payloadu z uwzglednieniem preferencji logo.
 def _get_primary_image(selected_images: list[str], prefer_logo: bool = False) -> str:
     ordered = _prioritize_logo_images(selected_images)
     logos = [image_url for image_url in ordered if "logo" in image_url.lower()]
@@ -722,17 +904,20 @@ def _get_primary_image(selected_images: list[str], prefer_logo: bool = False) ->
     return PLACEHOLDER_IMAGE
 
 
+# Zwraca nazwe preferowanej zmiennej obrazka dla wybranego template'u.
 def _preferred_image_var_name(template_id: str | None = None) -> str:
     variable_map = get_template_variable_map(template_id)
     return _select_preferred_image_var(variable_map["image"])
 
 
+# Formatuje liste nazw zmiennych do czytelnego komunikatu bledu.
 def _format_var_list(var_names: list[str]) -> str:
     if not var_names:
         return "brak"
     return ", ".join(sorted(var_names))
 
 
+# Sprawdza, czy wybrany template pasuje do danych zaznaczonych w formularzu.
 def _validate_template_selection_compatibility(
     *,
     template_id: str | None,
@@ -768,6 +953,7 @@ def _validate_template_selection_compatibility(
         )
 
 
+# Buduje payload do preview lub wysylki na podstawie biezacego stanu formularza.
 def build_payload_from_selection(
     *,
     source_url: str,
@@ -780,11 +966,12 @@ def build_payload_from_selection(
     selected_template_id: str | None = None,
     dry_run: bool = True,
     short_test: bool = True,
+    fast_preview: bool = False,
 ) -> dict[str, Any]:
     if not selected_texts and not (script_text and script_text.strip()):
         raise ValueError("Wybierz co najmniej jeden fragment tekstu lub wpisz własny skrypt.")
 
-    if dry_run:
+    if dry_run and not fast_preview:
         dry_run_validate_ids(
             avatar_id=selected_avatar_id,
             template_id=selected_template_id,
@@ -792,12 +979,18 @@ def build_payload_from_selection(
 
     script = build_script(selected_texts, short_test, script_text)
     ordered_images = _prioritize_logo_images(selected_images)
-    _validate_template_selection_compatibility(
-        template_id=selected_template_id,
-        selected_images=ordered_images,
-        script=script,
+    variable_map = (
+        get_template_variable_map_cached_or_default(selected_template_id)
+        if fast_preview
+        else get_template_variable_map(selected_template_id)
     )
-    image_var_name = _preferred_image_var_name(selected_template_id)
+    if not fast_preview:
+        _validate_template_selection_compatibility(
+            template_id=selected_template_id,
+            selected_images=ordered_images,
+            script=script,
+        )
+    image_var_name = _select_preferred_image_var(variable_map["image"])
     prefer_logo = "logo" in image_var_name.lower()
     image_url = _get_primary_image(ordered_images, prefer_logo=prefer_logo)
 
@@ -812,6 +1005,7 @@ def build_payload_from_selection(
         avatar_id=selected_avatar_id,
         template_id=selected_template_id,
         selected_images=ordered_images,
+        variable_map=variable_map,
     )
     if script.strip():
         payload["script_input"] = script
@@ -823,8 +1017,7 @@ def build_payload_from_selection(
     _save_last_payload(payload)
     return payload
 
-# https://londynek.net/api/get-data?hash=F8047E46311596755B6AE4B09C54D346B2DD712F&limit=1&sql_where=and%20ja.jdnews_id%3D4807783&select_fields=news_content,movie_p,movie,headline,headline_en,title,title_en
-
+# Generuje wideo na podstawie ID artykulu pobieranego z API Londynka.
 def run(
     article_id: int,
     dry_run: bool = True,
