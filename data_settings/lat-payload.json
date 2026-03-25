@@ -3,50 +3,54 @@
   "caption": false,
   "title": "TEST",
   "variables": {
-    "image_": {
-      "name": "image_",
+    "background": {
+      "name": "background",
       "type": "image",
       "properties": {
-        "url": "https://landowska-design.pl/uploads/galeria/2021/2021_imad/1500/iMad02.jpg.webp",
+        "url": "https://assets.aws.londynek.net/images/jdevents/443651-202601200908-lg.jpg",
         "fit": "cover"
       }
     },
-    "background_": {
-      "name": "background_",
+    "logo": {
+      "name": "logo",
+      "type": "image",
+      "properties": {
+        "url": "https://assets.aws.londynek.net/images/jdevents/443651-202601200908-lg.jpg",
+        "fit": "contain"
+      }
+    },
+    "avatar": {
+      "name": "avatar",
       "type": "character",
       "properties": {
         "character_id": "Annie_Casual_Standing_Front_2_public",
         "type": "avatar"
       }
     },
-    "title_": {
-      "name": "title_",
+    "script": {
+      "name": "script",
       "type": "text",
       "properties": {
-        "content": "landowska-design.pl"
+        "content": "Mam do wynajecia mały pokoj dla jednej osoby. Oplata miesieczna £530 (2 tyg kaucji £240). Dom zlokalizowanye we wschodnim londynie, 2/3 stref, Canning Town. Kuchnia z jadalnią, living room."
       }
     },
-    "script1": {
-      "name": "script1",
+    "title": {
+      "name": "title",
       "type": "text",
       "properties": {
-        "content": "Projektowanie pomieszczeń Salon Łazienka Kuchnia"
+        "content": "Wideo z https://londynek.net/accommodation/ad?ad_id=1321877"
       }
     },
-    "subtitle_": {
-      "name": "subtitle_",
+    "subtitle": {
+      "name": "subtitle",
       "type": "text",
       "properties": {
-        "content": "landowska-design.pl"
+        "content": "Wideo z https://londynek.net/accommodation/ad?ad_id=1321877"
       }
     }
   },
-  "script_input": "Projektowanie pomieszczeń Salon Łazienka Kuchnia",
-  "selected_images": [
-    "https://landowska-design.pl/uploads/landowska-design-logo-w700.png",
-    "https://landowska-design.pl/uploads/galeria/2021/2021_imad/1500/iMad02.jpg.webp",
-    "https://landowska-design.pl/uploads/galeria/2021/2021_imad/1500/iMad03.jpg.webp"
-  ],
+  "script_input": "Mam do wynajecia mały pokoj dla jednej osoby. Oplata miesieczna £530 (2 tyg kaucji £240). Dom zlokalizowanye we wschodnim londynie, 2/3 stref, Canning Town. Kuchnia z jadalnią, living room.",
+  "selected_images": [],
   "template_id_selected": "581f6d97e1224c38bf3bad1567e13c2f",
   "webhook_enabled": false
 }
